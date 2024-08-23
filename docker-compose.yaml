@@ -11,6 +11,13 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT
       - OTEL_EXPORTER_OTLP_HEADERS
       - OTEL_SERVICE_NAME=backend-for-frontend
+    depends_on:
+      image-picker:
+        condition: service_started
+      meminator:
+        condition: service_started
+      phrase-picker:
+        condition: service_started
 
   image-picker:
     build:
@@ -67,9 +74,4 @@ services:
     depends_on:
       backend-for-frontend:
         condition: service_healthy
-      image-picker:
-        condition: service_started
-      meminator:
-        condition: service_started
-      phrase-picker:
-        condition: service_started
+
