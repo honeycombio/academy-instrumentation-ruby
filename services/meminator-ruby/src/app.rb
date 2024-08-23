@@ -1,6 +1,7 @@
 require 'sinatra/base'
 require 'open-uri'
 require 'tempfile'
+require_relative 'observability'
 
 class MeminatorApp < Sinatra::Application
   set :bind, '0.0.0.0'

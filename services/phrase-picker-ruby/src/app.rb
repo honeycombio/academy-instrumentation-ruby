@@ -1,4 +1,5 @@
 require 'sinatra/base'
+require_relative 'observability'
 
 class PhrasePickerApp < Sinatra::Application
   set :bind, '0.0.0.0'
@@ -31,6 +32,8 @@ class PhrasePickerApp < Sinatra::Application
 
   get '/phrase' do
     chosen_phrase = PHRASE_LIST.sample
+    OpenTelemetry::Trace.current_span.set_attribute("app.phrase", chosen_phrase)
+
     content_type :json
     { "phrase": chosen_phrase }.to_json
   end
