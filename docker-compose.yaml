@@ -11,11 +11,6 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT
       - OTEL_EXPORTER_OTLP_HEADERS
       - OTEL_SERVICE_NAME=backend-for-frontend
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:10115/actuator/health || exit 1"]
-      interval: 5s
-      timeout: 10s
-      retries: 24
 
   image-picker:
     build:
