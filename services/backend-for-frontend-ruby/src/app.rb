@@ -25,7 +25,7 @@ class FrontendForBackendApp < Sinatra::Application
     [200, meminated_response.body]
   end
 
-  get '/actuator/health' do
+  get '/health' do
     [200, 'UP']
   end
 

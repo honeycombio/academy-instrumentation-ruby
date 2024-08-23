@@ -25,7 +25,7 @@ COPY ./src ./src
 EXPOSE 10115
 
 HEALTHCHECK --interval=1m --timeout=10s --start-period=5s --retries=5 \
-  CMD curl -f http://localhost:10115/actuator/health || exit 1
+  CMD curl -f http://localhost:10115/health || exit 1
 
 # Command to run the application
 CMD [ "ruby", "src/app.rb" ]
