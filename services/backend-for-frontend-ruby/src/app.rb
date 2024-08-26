@@ -11,6 +11,8 @@ class BackendForFrontendApp < Sinatra::Application
   MEMINATOR_URI = URI('http://meminator:10117/applyPhraseToPicture')
 
   post '/createPicture' do
+    meminated_response = nil
+
     # get a phrase
     phrase_response = Net::HTTP.get_response(PHRASE_URI)
     phrase = JSON.parse(phrase_response.body).fetch('phrase') { return [500, 'Sorry. No phrases were found to meminate.'] }
@@ -19,6 +21,10 @@ class BackendForFrontendApp < Sinatra::Application
     image_url = JSON.parse(image_response.body).fetch('imageUrl') { return [500, 'Sorry. No images were found to meminate.'] }
     # meminate phrase onto image
     meminated_response = Net::HTTP.post(MEMINATOR_URI, { phrase: phrase, imageUrl: image_url }.to_json, 'Content-Type' => 'application/json')
+
+    if meminated_response.nil?
+      return [500, 'Sorry. Could not create a picture for you.']
+    end
 
     # return meminated image
     content_type meminated_response['Content-Type']
