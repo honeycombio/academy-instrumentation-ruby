@@ -1,7 +1,7 @@
 require 'sinatra/base'
 require 'net/http'
 
-class FrontendForBackendApp < Sinatra::Application
+class BackendForFrontendApp < Sinatra::Application
   set :bind, '0.0.0.0'
   set :port, '10115'
   set :show_exceptions, false
