@@ -1,4 +1,5 @@
 require 'sinatra/base'
+require_relative 'observability'
 
 class ImagePickerApp < Sinatra::Application
   set :bind, '0.0.0.0'
@@ -66,6 +67,8 @@ class ImagePickerApp < Sinatra::Application
   get '/imageUrl' do
     chosen_image = IMAGE_LIST.sample
     image_url = "#{IMAGE_URL_PREFIX}#{chosen_image}"
+    OpenTelemetry::Trace.current_span.set_attribute("app.image", chosen_image)
+
     content_type :json
     { "imageUrl": image_url }.to_json
   end

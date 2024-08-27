@@ -1,15 +1,19 @@
 require 'sinatra/base'
 require 'open-uri'
 require 'tempfile'
+require 'open3'
+require_relative 'observability'
 
 class MeminatorApp < Sinatra::Application
   set :bind, '0.0.0.0'
   set :port, '10117'
   set :show_exceptions, false
 
+  TRACER = OpenTelemetry.tracer_provider.tracer('MeminatorApp', '0.1.0')
 
   IMAGE_MAX_WIDTH_PX = 1000
   IMAGE_MAX_HEIGHT_PX = 1000
+  IMAGE_RESIZE_DIMENSIONS = "#{IMAGE_MAX_WIDTH_PX}x#{IMAGE_MAX_HEIGHT_PX}"
 
   post '/applyPhraseToPicture' do
     request.body.rewind
@@ -17,48 +21,55 @@ class MeminatorApp < Sinatra::Application
     logger.info "Received request: #{work}"
 
     phrase = work.fetch("phrase") { return [400, "Missing 'phrase' key in JSON request body."] }
+    OpenTelemetry::Trace.current_span.set_attribute("app.phrase", phrase)
+
     image_url = work.fetch("imageUrl") { return [400, "Missing 'imageUrl' key in JSON request body."] }
+    OpenTelemetry::Trace.current_span.set_attribute("app.imageUrl", image_url)
 
     begin
       image_url = URI.parse(image_url)
-      [URI::HTTP, URI::HTTPS].include?(image_url.class) or raise URI::InvalidURIError
-    rescue URI::InvalidURIError
-      return [400, "Invalid 'imageUrl' value in JSON request body."]
+      [URI::HTTP, URI::HTTPS].include?(image_url.class) or raise URI::Error.new("URL scheme must be HTTP or HTTPS.")
+    rescue URI::Error => e
+      OpenTelemetry::Trace.current_span.record_exception(e)
+      return [400, "Invalid 'imageUrl' value in JSON request body. #{e.message}"]
     end
 
     file_extension = File.extname(image_url.path)
     downloaded_image = Tempfile.new(["downloaded_image", file_extension])
     downloaded_image.binmode
-    downloaded_image.write(URI.open(image_url).read)
+
+    TRACER.in_span('retrieve_image') do |span|
+      downloaded_image.write(URI.open(image_url).read)
+    end
 
     meme_image = Tempfile.new(["meme_image", file_extension])
 
-    memination_command = [
-      "convert", downloaded_image.path,
-      "-resize", (IMAGE_MAX_WIDTH_PX.to_s + "x" + IMAGE_MAX_HEIGHT_PX.to_s),
-      "-gravity", "North",
-      "-pointsize", "48",
-      "-fill", "white",
-      "-undercolor", "#00000080",
-      "-font", "Angkor-Regular",
-      "-annotate", "0",
-      phrase.upcase,
-      meme_image.path
-    ]
+    TRACER.in_span('convert') do |conversion_span|
+      memination_command = [
+        "convert", downloaded_image.path,
+        "-resize", IMAGE_RESIZE_DIMENSIONS,
+        "-gravity", "'North'",
+        "-pointsize", "48",
+        "-fill", "'white'",
+        "-undercolor", "'#00000080'",
+        "-font", "'Angkor-Regular'",
+        "-annotate", "0",
+        ('"' + phrase.upcase + '"'),
+        meme_image.path
+      ].join(" ")
 
-    begin
-      result = IO.popen(memination_command)
-      logger.info result.readlines
-      result.close
-      # TODO: capture process return code, stdout, and stderr
-    rescue Errno::ENOENT => e
-      logger.error "Failed to run command: #{e.message}"
-      logger.error e.backtrace
-      return [500, "Failed to meminate."]
-    end
+      conversion_span.set_attribute("app.subprocess.command", memination_command)
 
-    if $?.exitstatus != 0
-      return [500, "Failed to meminate."]
+      cmd_out, cmd_err, status = Open3.capture3(memination_command)
+      conversion_span.add_attributes({
+        "app.subprocess.returncode" => status.exitstatus,
+        "app.subprocess.stderr" => cmd_err,
+        "app.subprocess.stdout" => cmd_out,
+      })
+
+      if !status.success?
+        return [500, "Failed to meminate."]
+      end
     end
 
     send_file meme_image.path
