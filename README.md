@@ -1,3 +1,5 @@
+[![OSS Lifecycle](https://img.shields.io/osslifecycle/honeycombio/academy-instrumentation-ruby)](https://github.com/honeycombio/home/blob/main/honeycomb-oss-lifecycle-and-practices.md)
+
 
 # Honeycomb Academy: Sample Meminator App
 
