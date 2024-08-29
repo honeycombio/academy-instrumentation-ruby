@@ -12,28 +12,30 @@ module MemeGenerator
     # what type of image are we working with?
     file_extension = File.extname(image_url.path)
 
-    # retrieve the original image
-    downloaded_image = Tempfile.new(["downloaded_image", file_extension])
-    downloaded_image.binmode
-    downloaded_image.write(URI.open(image_url).read)
-
-    # generate meme
+    # initialize a tmp file for meme to be generated
     meme_image = Tempfile.new(["meme_image", file_extension])
+    status = :unknown
 
-    memination_command = [
-      "convert", downloaded_image.path,
-      "-resize", IMAGE_RESIZE_DIMENSIONS,
-      "-gravity", "'North'",
-      "-pointsize", "48",
-      "-fill", "'white'",
-      "-undercolor", "'#00000080'",
-      "-font", "'Angkor-Regular'",
-      "-annotate", "0",
-      ('"' + phrase.upcase + '"'),
-      meme_image.path
-    ].join(" ")
+    Tempfile.create(["downloaded_image", file_extension]) do |downloaded_image|
+      downloaded_image.binmode
 
-    cmd_out, cmd_err, status = Open3.capture3(memination_command)
+      # retrieve the original image
+      URI.open(image_url) { |img| downloaded_image.write(img.read) }
+
+      # generate meme
+      meme_image = Tempfile.new(["meme_image", file_extension])
+      cmd_out, cmd_err, status = Open3.capture3 <<~MEMINATION_COMMAND
+        convert #{downloaded_image.path} \
+          -resize #{IMAGE_RESIZE_DIMENSIONS} \
+          -gravity 'North' \
+          -pointsize 48 \
+          -fill 'white' \
+          -undercolor '#00000080' \
+          -font 'Angkor-Regular' \
+          -annotate 0 "#{phrase.upcase}" \
+          #{meme_image.path}
+      MEMINATION_COMMAND
+    end # downloaded_image file is closed and deleted
 
     [meme_image, status]
   end
