@@ -1,5 +1,4 @@
 require 'sinatra/base'
-require 'net/http'
 require_relative 'clients'
 
 class BackendForFrontendApp < Sinatra::Application
@@ -20,13 +19,10 @@ class BackendForFrontendApp < Sinatra::Application
 
     # meminate phrase onto image
     meminated_response = MeminatorClient.create_picture(phrase, image_url)
-
-    unless meminated_response.is_a?(Net::HTTPSuccess)
-      return [500, 'Sorry. Could not create a picture for you.']
-    end
+    return [500, 'Sorry. Could not create a picture for you.'] unless meminated_response
 
     # return meminated image
-    content_type meminated_response.content_type
+    content_type meminated_response.headers['Content-Type']
     [200, meminated_response.body]
   end
 
