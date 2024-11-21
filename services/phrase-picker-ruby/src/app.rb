@@ -1,4 +1,5 @@
 require 'sinatra/base'
+require_relative 'phrase_db'
 require_relative 'observability'
 
 class PhrasePickerApp < Sinatra::Application
@@ -6,32 +7,8 @@ class PhrasePickerApp < Sinatra::Application
   set :port, '10118'
   set :show_exceptions, false
 
-  PHRASE_LIST = [
-    "you're muted",
-    "not dead yet",
-    "Let them.",
-    "Boiling Loves Company!",
-    "Must we?",
-    "SRE not-sorry",
-    "Honeycomb at home",
-    "There is no cloud",
-    "This is fine",
-    "It's a trap!",
-    "Not Today",
-    "You had one job",
-    "bruh",
-    "have you tried restarting?",
-    "try again after coffee",
-    "deploy != release",
-    "oh, just the crimes",
-    "not a bug, it's a feature",
-    "test in prod",
-    "who broke the build?",
-    "it could be worse",
-  ]
-
   get '/phrase' do
-    chosen_phrase = PHRASE_LIST.sample
+    chosen_phrase = PhraseDB.random_phrase
     OpenTelemetry::Trace.current_span.set_attribute("app.phrase", chosen_phrase)
 
     content_type :json
